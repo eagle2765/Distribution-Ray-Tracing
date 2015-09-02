@@ -54,11 +54,15 @@ class Camera {
     public right: Vector;
     public up: Vector;
 
-    constructor(public pos: Vector, lookAt: Vector) {
+    constructor(public pos: Vector, lookAt: Vector, distance: number, hsize: number, vsize: number) {
         var down = new Vector(0.0, -1.0, 0.0);
+       
         this.forward = Vector.norm(Vector.minus(lookAt, this.pos));
-        this.right = Vector.times(1.5, Vector.norm(Vector.cross(this.forward, down)));
-        this.up = Vector.times(1.5, Vector.norm(Vector.cross(this.forward, this.right)));
+        //calculating focal length
+        this.forward = Vector.times(distance, this.forward);
+       
+        this.right = Vector.times(hsize, Vector.norm(Vector.cross(this.forward, down)));
+        this.up = Vector.times(vsize, Vector.norm(Vector.cross(this.forward, this.right)));
     }
 }
 
@@ -333,25 +337,28 @@ function defaultScene(): Scene {
                  { pos: new Vector(1.5, 2.5, 1.5), color: new Color(0.07, 0.07, 0.49) },
                  { pos: new Vector(1.5, 2.5, -1.5), color: new Color(0.07, 0.49, 0.071) },
                  { pos: new Vector(0.0, 3.5, 0.0), color: new Color(0.21, 0.21, 0.35) }],
-        camera: new Camera(new Vector(3.0, 2.0, 4.0), new Vector(-1.0, 0.5, 0.0))
+        camera: new Camera(new Vector(3.0, 2.0, 4.0), new Vector(-1.0, 0.5, 0.0), 1, 2, 1.5)
     };
 }
 
 function exec() {
     var canv = document.createElement("canvas");
-    canv.width = 480;
-    canv.height = 480;
+    canv.width = 1600;
+    canv.height = 900;
     document.body.appendChild(canv);
     var ctx = canv.getContext("2d");
     var rayTracer = new RayTracer();
 
     // set up for video recording
-    var length = 2;  // seconds
-    var fps = 10;
+    //change back to 2
+    var length = 1;  // seconds
+    //change back to 10
+    var fps = 1;
     var encoder = new Whammy.Video(fps);
     
     // start the raytracer
-    rayTracer.render(defaultScene(), encoder, length, fps, ctx, 480, 480, 480, 480);
+    //original: rayTracer.render(defaultScene(), encoder, length, fps, ctx, 480, 480, 480, 480);
+    rayTracer.render(defaultScene(), encoder, length, fps, ctx, 1600, 900, 1600, 900);
 }
 
 exec();
