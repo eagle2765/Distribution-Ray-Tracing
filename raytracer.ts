@@ -343,22 +343,20 @@ function defaultScene(): Scene {
 
 function exec() {
     var canv = document.createElement("canvas");
-    canv.width = 1600;
-    canv.height = 900;
+    canv.width = 640;
+    canv.height = 480;
     document.body.appendChild(canv);
     var ctx = canv.getContext("2d");
     var rayTracer = new RayTracer();
 
     // set up for video recording
-    //change back to 2
-    var length = 1;  // seconds
+    var length = 2;  // seconds
     //change back to 10
-    var fps = 1;
+    var fps = 10;
     var encoder = new Whammy.Video(fps);
     
     // start the raytracer
-    //original: rayTracer.render(defaultScene(), encoder, length, fps, ctx, 480, 480, 480, 480);
-    rayTracer.render(defaultScene(), encoder, length, fps, ctx, 1600, 900, 1600, 900);
+    rayTracer.render(defaultScene(), encoder, length, fps, ctx, 640, 480, 640, 480);
 }
 
 exec();
