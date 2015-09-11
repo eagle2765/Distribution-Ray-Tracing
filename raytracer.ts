@@ -37,6 +37,7 @@ class Color {
     static white = new Color(1.0, 1.0, 1.0);
     static grey = new Color(0.5, 0.5, 0.5);
     static black = new Color(0.0, 0.0, 0.0);
+    static blue = new Color(0.53, 0.81, 1);
     static background = Color.black;
     static defaultColor = Color.black;
     static toDrawingColor(c: Color) {
@@ -85,8 +86,8 @@ interface Surface {
 }
 
 interface Thing {
-    intersect: (ray: Ray) => Intersection;
-    normal: (pos: Vector) => Vector;
+    intersect: (ray: Ray, time: number) => Intersection;
+    normal: (pos: Vector, time: number) => Vector;
     surface: Surface;
 }
 
@@ -107,9 +108,9 @@ class Sphere implements Thing {
     constructor(public center: Vector, radius: number, public surface: Surface) {
         this.radius2 = radius * radius;
     }
-    normal(pos: Vector): Vector { return Vector.norm(Vector.minus(pos, this.center)); }
-    intersect(ray: Ray) {
-        var eo = Vector.minus(this.center, ray.start);
+    normal(pos: Vector, time: number): Vector { return Vector.norm(Vector.minus(pos, this.getCenter(time))); }
+    intersect(ray: Ray, time: number) {
+        var eo = Vector.minus(this.getCenter(time), ray.start);
         var v = Vector.dot(eo, ray.dir);
         var dist = 0;
         if (v >= 0) {
@@ -124,14 +125,39 @@ class Sphere implements Thing {
             return { thing: this, ray: ray, dist: dist };
         }
     }
+    
+    getCenter(time: number = 0): Vector {
+        return this.center;
+    }
+}
+
+class MovingSphere extends Sphere {
+    
+    getCenter(time: number): Vector {
+
+        var sphereCenter = Vector.times(1.0, this.center);
+        if (time == 0) {
+            return sphereCenter;
+        }
+        //sphere.center.z = sphereCenter.z + Math.cos(0)/2;
+
+        // animate the sphere with a sin function
+        var angle = Math.PI * time; 
+        var sin = Math.sin(angle);
+        sin = Math.pow(sin, 3);
+        sphereCenter.x = sphereCenter.x + sin * 2;
+        sphereCenter.z = sphereCenter.z + sin * 5;
+
+        return sphereCenter;
+    }
 }
 
 class Plane implements Thing {
-    public normal: (pos: Vector) =>Vector;
-    public intersect: (ray: Ray) =>Intersection;
+    public normal: (pos: Vector, time: number) =>Vector;
+    public intersect: (ray: Ray, time: number) =>Intersection;
     constructor(norm: Vector, offset: number, public surface: Surface) {
-        this.normal = function(pos: Vector) { return norm; }
-        this.intersect = function(ray: Ray): Intersection {
+        this.normal = function(pos: Vector, time: number) { return norm; }
+        this.intersect = function(ray: Ray, time: number): Intersection {
             var denom = Vector.dot(norm, ray.dir);
             if (denom > 0) {
                 return null;
@@ -155,7 +181,7 @@ module Surfaces {
             if ((Math.floor(pos.z) + Math.floor(pos.x)) % 2 !== 0) {
                 return Color.white;
             } else {
-                return Color.black;
+                return Color.blue;
             }
         },
         specular: function(pos) { return Color.white; },
@@ -174,11 +200,11 @@ module Surfaces {
 class RayTracer {
     private maxDepth = 5;
 
-    private intersections(ray: Ray, scene: Scene) {
+    private intersections(ray: Ray, scene: Scene, time: number) {
         var closest = +Infinity;
         var closestInter: Intersection = undefined;
         for (var i in scene.things) {
-            var inter = scene.things[i].intersect(ray);
+            var inter = scene.things[i].intersect(ray, time);
             if (inter != null && inter.dist < closest) {
                 closestInter = inter;
                 closest = inter.dist;
@@ -187,8 +213,8 @@ class RayTracer {
         return closestInter;
     }
 
-    private testRay(ray: Ray, scene: Scene) {
-        var isect = this.intersections(ray, scene);
+    private testRay(ray: Ray, scene: Scene, time: number) {
+        var isect = this.intersections(ray, scene, time);
         if (isect != null) {
             return isect.dist;
         } else {
@@ -196,35 +222,35 @@ class RayTracer {
         }
     }
 
-    private traceRay(ray: Ray, scene: Scene, depth: number): Color {
-        var isect = this.intersections(ray, scene);
+    private traceRay(ray: Ray, scene: Scene, depth: number, time: number): Color {
+        var isect = this.intersections(ray, scene, time);
         if (isect === undefined) {
             return Color.background;
         } else {
-            return this.shade(isect, scene, depth);
+            return this.shade(isect, scene, depth, time);
         }
     }
 
-    private shade(isect: Intersection, scene: Scene, depth: number) {
+    private shade(isect: Intersection, scene: Scene, depth: number, time: number) {
         var d = isect.ray.dir;
         var pos = Vector.plus(Vector.times(isect.dist, d), isect.ray.start);
-        var normal = isect.thing.normal(pos);
+        var normal = isect.thing.normal(pos, time);
         var reflectDir = Vector.minus(d, Vector.times(2, Vector.times(Vector.dot(normal, d), normal)));
         var naturalColor = Color.plus(Color.background,
-                                      this.getNaturalColor(isect.thing, pos, normal, reflectDir, scene));
-        var reflectedColor = (depth >= this.maxDepth) ? Color.grey : this.getReflectionColor(isect.thing, pos, normal, reflectDir, scene, depth);
+                                      this.getNaturalColor(isect.thing, pos, normal, reflectDir, scene, time));
+        var reflectedColor = (depth >= this.maxDepth) ? Color.grey : this.getReflectionColor(isect.thing, pos, normal, reflectDir, scene, depth, time);
         return Color.plus(naturalColor, reflectedColor);
     }
 
-    private getReflectionColor(thing: Thing, pos: Vector, normal: Vector, rd: Vector, scene: Scene, depth: number) {
-        return Color.scale(thing.surface.reflect(pos), this.traceRay({ start: pos, dir: rd }, scene, depth + 1));
+    private getReflectionColor(thing: Thing, pos: Vector, normal: Vector, rd: Vector, scene: Scene, depth: number, time: number) {
+        return Color.scale(thing.surface.reflect(pos), this.traceRay({ start: pos, dir: rd }, scene, depth + 1, time));
     }
 
-    private getNaturalColor(thing: Thing, pos: Vector, norm: Vector, rd: Vector, scene: Scene) {
+    private getNaturalColor(thing: Thing, pos: Vector, norm: Vector, rd: Vector, scene: Scene, time: number) {
         var addLight = (col, light) => {
             var ldis = Vector.minus(light.pos, pos);
             var livec = Vector.norm(ldis);
-            var neatIsect = this.testRay({ start: pos, dir: livec }, scene);
+            var neatIsect = this.testRay({ start: pos, dir: livec }, scene, time);
             var isInShadow = (neatIsect === undefined) ? false : (neatIsect <= Vector.mag(ldis));
             if (isInShadow) {
                 return col;
@@ -253,7 +279,7 @@ class RayTracer {
     //    of frames
     render(scene, encoder: Whammy.Video, length: number, fps: number,
                 ctx : CanvasRenderingContext2D, 
-                screenWidth, screenHeight, canvasWidth, canvasHeight) {
+                screenWidth, screenHeight, canvasWidth, canvasHeight, grid: number) {
         var getPoint = (x, y, camera) => {
             var recenterX = x =>(x - (screenWidth / 2.0)) / 2.0 / screenWidth;
             var recenterY = y => - (y - (screenHeight / 2.0)) / 2.0 / screenHeight;
@@ -264,23 +290,36 @@ class RayTracer {
         var pixelWidth = canvasWidth / screenWidth;
         var pixelHeight = canvasHeight / screenHeight;
         var y = 0;
+        // time interval for each frame
+        var frameduration = 1 / fps;
+        // time window for each frame
+        var initialt = 0;
+        var nextt = initialt + frameduration;
  
         // how many frames       
         var frame = length * fps;
-        
-        // <<< Beginning: THIS WILL GO AWAY in your solution, when you add motion blur
-        // we're going to move the sphere around
-        var sphere = <Sphere>scene.things[1];
-        // easy way to get a copy of the center
-        var sphereCenter = Vector.times(1.0, sphere.center);
-        
-        sphere.center.x = sphereCenter.x + Math.sin(0)/2;
-        //sphere.center.z = sphereCenter.z + Math.cos(0)/2;
-        // End >>>>: THIS WILL GO AWAY in your solution, when you add motion blur
+
 
         var renderRow = () => {
             for (var x = 0; x < screenWidth; x++) {
-                var color = this.traceRay({ start: scene.camera.pos, dir: getPoint(x, y, scene.camera) }, scene, 0);
+                var color = new Color(0, 0, 0);
+                // used for adding colors
+                var temp = new Color(0,0,0);
+                // grid size
+                // n^2 grid sampling within each pixel
+                for (var p = 0; p < grid; p++) {
+                    for (var q = 0; q < grid; q++) {
+                        // calculate random time for this ray
+                        var atime = initialt + Math.random() * (nextt - initialt);
+                        // the jittered sample
+                        temp = this.traceRay({ start: scene.camera.pos, dir: getPoint(x + (p + Math.random())/grid, y + (q + Math.random())/grid, scene.camera) }, scene, 0, atime);
+                        color = Color.plus(color, temp);
+                    }
+                }
+                // average the grid^2 samples for the pixel
+                color = Color.scale(1/(grid * grid), color);
+                //original
+                //color = this.traceRay({ start: scene.camera.pos, dir: getPoint(x, y, scene.camera) }, scene, 0);
                 var c = Color.toDrawingColor(color);
                 ctx.fillStyle = "rgb(" + String(c.r) + ", " + String(c.g) + ", " + String(c.b) + ")";
                 ctx.fillRect(x * pixelWidth, y * pixelHeight, pixelWidth, pixelHeight);
@@ -300,14 +339,10 @@ class RayTracer {
                     // increment frame, restart the line counter
                     y = 0;
                     frame--;
+                    initialt = initialt + frameduration;
+                    nextt = nextt + frameduration;
 
-                    // <<< Beginning: THIS WILL GO AWAY in your solution, when you add motion blur
-                    // animate the sphere with a sin function
-                    var angle = (((2 * Math.PI) / length) / fps) * (fps * length - frame); 
-                    var sin = Math.sin(angle);
-                    sin = Math.pow(sin, 3);
-                    sphere.center.x = sphereCenter.x + sin * 2;
-                    // End >>>>: THIS WILL GO AWAY in your solution, when you add motion blur
+
                     
                     // start the next frame         
                     requestAnimationFrame(renderRow);            
@@ -331,13 +366,13 @@ class RayTracer {
 function defaultScene(): Scene {
     return {
         things: [new Plane(new Vector(0.0, 1.0, 0.0), 0.0, Surfaces.checkerboard),
-                 new Sphere(new Vector(0.0, 1.0, -0.25), 1.0, Surfaces.shiny),
+                 new MovingSphere(new Vector(0.0, 1.0, -0.25), 1.0, Surfaces.shiny),
                  new Sphere(new Vector(-1.0, 0.5, 1.5), 0.5, Surfaces.shiny)],
         lights: [{ pos: new Vector(-2.0, 2.5, 0.0), color: new Color(0.49, 0.07, 0.07) },
-                 { pos: new Vector(1.5, 2.5, 1.5), color: new Color(0.07, 0.07, 0.49) },
+                 { pos: new Vector(1.5, 2.5, 1.5), color: new Color(0.07, 0.3, 0.49) },
                  { pos: new Vector(1.5, 2.5, -1.5), color: new Color(0.07, 0.49, 0.071) },
-                 { pos: new Vector(0.0, 3.5, 0.0), color: new Color(0.21, 0.21, 0.35) }],
-        camera: new Camera(new Vector(3.0, 2.0, 4.0), new Vector(-1.0, 0.5, 0.0), 1, 2, 1.5)
+                 { pos: new Vector(0.0, 3.5, 0.0), color: new Color(0.1, 0.21, 0.35) }],
+        camera: new Camera(new Vector(3.0, 15.0, 4.0), new Vector(-1.0, 0.5, 0.0), 0.5, 2, 1.5)
     };
 }
 
@@ -356,7 +391,7 @@ function exec() {
     var encoder = new Whammy.Video(fps);
     
     // start the raytracer
-    rayTracer.render(defaultScene(), encoder, length, fps, ctx, 640, 480, 640, 480);
+    rayTracer.render(defaultScene(), encoder, length, fps, ctx, 640, 480, 640, 480, 4);
 }
 
 exec();
