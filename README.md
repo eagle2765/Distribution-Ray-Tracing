@@ -75,3 +75,18 @@ Each movie should be an MP4 file, so it is easy for the TAs to view.  You should
 3. open and view the web page ```raytracer.html```
 
 The TAs will need to change the parameters you pass to the ```render()``` function and generate images to test various aspects of your code, especially that the generalized Camera model works correctly.
+
+
+#My Results
+
+Original
+![Video created with provided code](raytraced-movie1-gif.gif)
+
+Original with antialiasing
+![Video created with provided code](raytraced-movie2-gif.gif)
+
+Original with antialiasing and motion blur
+![Video created with provided code](raytraced-movie3-gif.gif)
+
+Original with different angle
+![Video created with provided code](raytraced-movie4-gif.gif)
