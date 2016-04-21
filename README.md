@@ -80,13 +80,20 @@ The TAs will need to change the parameters you pass to the ```render()``` functi
 #My Results
 
 Original
+
+
 ![Video created with provided code](raytraced-movie1-gif.gif)
 
+
 Original with antialiasing
+
+
 ![Video created with provided code](raytraced-movie2-gif.gif)
 
 Original with antialiasing and motion blur
+
 ![Video created with provided code](raytraced-movie3-gif.gif)
 
 Original with different angle
+
 ![Video created with provided code](raytraced-movie4-gif.gif)
